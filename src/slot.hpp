@@ -28,7 +28,6 @@
 #define _EVENT_SLOT_HPP_
 
 #include "slot.h"
-#include "counted.h"
 
 #define slot_templ template<typename R, typename ...Args>
 #define _Self event::Slot<R(Args...)>
@@ -65,11 +64,11 @@ inline _Self& _Self::operator=(_Self const& src)
 
 
 slot_templ
-template<typename T>
-inline _Self::Slot(T* receiver, R(T::*member)(Args...) const)
+template<typename T, typename Base>
+inline _Self::Slot(T* receiver, R(Base::*member)(Args...) const)
 {
     this->clear();
-    using InType = R(T::*)(Args...) const;
+    using InType = R(Base::*)(Args...) const;
     union { InType input; struct { CMemType result; int offset; } s; } u = {0,};
     u.input = member;
     this->m_call.cmem = u.s.result;
@@ -81,16 +80,15 @@ inline _Self::Slot(T* receiver, R(T::*member)(Args...) const)
     this->m_dummy = u1.result;
     this->m_this = receiver;
 
-    memory::counted::ref(this->m_this);
     this->m_is_member = true;
 }
 
 slot_templ
-template<typename T>
-inline _Self::Slot(T* receiver, R(T::*member)(Args...))
+template<typename T, typename Base>
+inline _Self::Slot(T* receiver, R(Base::*member)(Args...))
 {
     this->clear();
-    using InType = R(T::*)(Args...);
+    using InType = R(Base::*)(Args...);
     union { InType input; struct { MemType result; int offset; } s; } u = {0,};
     u.input = member;
     this->m_call.mem = u.s.result;
@@ -102,7 +100,6 @@ inline _Self::Slot(T* receiver, R(T::*member)(Args...))
     this->m_dummy = u1.result;
     this->m_this = receiver;
 
-    memory::counted::ref(this->m_this);
     this->m_is_member = true;
 }
 
@@ -118,16 +115,10 @@ inline _Self& _Self::assign(_Self const& src)
 {
     if (__builtin_expect(!!(this != &src), 1))
     {
-        if (this->m_is_member)
-            memory::counted::unref(this->m_this);
-
         this->m_call.ptr = src.m_call.ptr;
         this->m_dummy = src.m_dummy;
         this->m_this = src.m_this;
         this->m_is_member = src.m_is_member;
-
-        if (this->m_is_member)
-            memory::counted::ref(this->m_this);
     }
 
     return *this;
@@ -150,9 +141,6 @@ inline _Self& _Self::swap(_Self& src)
 slot_templ
 inline void _Self::clear()
 {
-    if (this->m_is_member)
-        memory::counted::unref(this->m_this);
-
     this->m_this = null;
     this->m_dummy = null;
     this->m_call.ptr = null;

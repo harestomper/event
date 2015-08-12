@@ -60,11 +60,11 @@ public:
     Slot& operator=(Slot&& src);
     Slot& operator=(Slot const& src);
 
-    template<typename T>
-    Slot(T* receiver, R(T::*member)(Args...) const);
+    template<typename T, typename Base>
+    Slot(T* receiver, R(Base::*member)(Args...) const);
 
-    template<typename T>
-    Slot(T* receiver, R(T::*member)(Args...));
+    template<typename T, typename Base>
+    Slot(T* receiver, R(Base::*member)(Args...));
 
     Slot(R(*function)(Args...));
 
